@@ -3,41 +3,72 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <unistd.h>
 
-enum restart_policy_e {
+enum process_status {
+    none = 0,
+    starting = 1,
+    running = 2,
+    stopping = 3,
+    stopped = 4,
+    failed = 5,
+
+    process_status_max
+};
+
+enum restart_policy {
     never = 0,
     always = 1,
     failure = 2,
+
+    restart_policy_max
 };
 
-typedef struct process_t {
-    int pid;
-    char **cmd;
-    int numprocs;
-    int exit_code;
-    enum restart_policy_e restart_policy;
+struct process {
+    enum restart_policy restart_policy;
+    enum process_status status;
+
     mode_t permissions;
-    char *dir;
-} process_t;
 
-typedef struct runner_context_s {
-    process_t **processes;
-    char running;
-} runner_context_t;
+    int pid;
+    int numprocs;
+    int max_numprocs;
+    int autostart;
+    int initial_delay;
+    int restarts;
+    int graceful_period;
+    int last_exit_code;
 
-typedef struct node_s {
+    int *exit_codes;
+
+    char *cmd;
+    char *exit_signal;
+    char *alternative_stdout;
+    char *alternative_stdin;
+    char *cwd;
+};
+
+struct node {
     int height;
 
-    struct node_s *right;
-    struct node_s *left;
+    struct node *right;
+    struct node *left;
 
-    process_t *process;
-} node_t;
+    struct process *process;
+};
 
-node_t *insert_into_avl_tree(node_t *root, process_t *process);
-process_t *get_from_avl_tree(node_t *root, int pid);
-node_t *delete_from_avl_tree(node_t *root, int pid);
+struct context {
+    struct node *root;
+
+    char running;
+};
+
+struct node *insert_into_avl_tree(struct node *node, struct process *process);
+struct node *get_from_avl_tree(struct node *node, int pid);
+
+struct context *init_context();
+void runner_loop();
 
 #endif
