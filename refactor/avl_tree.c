@@ -1,4 +1,4 @@
-#include "taskmaster.h"
+#include "avl_tree.h"
 
 int max(int a, int b) { return a > b ? a : b; }
 
@@ -14,13 +14,15 @@ int get_balance_factor(struct node *node) {
     return get_height(node->left) - get_height(node->right);
 }
 
-struct node *create_node(struct process *process) {
+struct node *create_node(void *data) {
     struct node *node = (struct node *)malloc(sizeof(struct node));
 
     node->height = 1;
+
+    node->data = data;
+
     node->left = NULL;
     node->right = NULL;
-    node->process = process;
 
     return node;
 }
@@ -51,17 +53,19 @@ struct node *right_rotation(struct node *node) {
     return left;
 }
 
-struct node *insert_into_avl_tree(struct node *node, struct process *process) {
+struct node *insert_into_avl_tree(struct node *node, void *data, int (*cmp)(void *a, void *b)) {
     if (node == NULL) {
-        return create_node(process);
-    } else if (process->pid == node->process->pid) {
-        node->process = process;
+        return create_node(data);
+    } else if (cmp(data, node->data) < 0) {
+        node->left = insert_into_avl_tree(node->left, data, cmp);
+    } else if (cmp(data, node->data) > 0) {
+        node->right = insert_into_avl_tree(node->right, data, cmp);
+    } else {
+        // TODO: WARNING, potential leak, data has been replaced but the original value not returned
+        // so there is no way to free the memory
+        node->data = data;
 
         return node;
-    } else if (process->pid > node->process->pid) {
-        node->right = insert_into_avl_tree(node->right, process);
-    } else {
-        node->left = insert_into_avl_tree(node->left, process);
     }
 
     node->height = max(get_height(node->left), get_height(node->right)) + 1;
@@ -89,16 +93,21 @@ struct node *insert_into_avl_tree(struct node *node, struct process *process) {
     return node;
 }
 
-struct node *get_from_avl_tree(struct node *node, int pid) {
+struct node *get_from_avl_tree(struct node *node, void *data, int (*cmp)(void *a, void *b)) {
     if (node == NULL) {
         return NULL;
     }
 
-    if (node->process->pid == pid) {
+    if (cmp(data, node->data) == 0) {
         return node;
-    } else if (node->process->pid > pid) {
-        return get_from_avl_tree(node->left, pid);
+    } else if (cmp(data, node->data) < 0) {
+        return get_from_avl_tree(node->left, data, cmp);
     } else {
-        return get_from_avl_tree(node->right, pid);
+        return get_from_avl_tree(node->right, data, cmp);
     }
+}
+
+struct node *remove_from_avl_tree(struct node *node, void *data, int (*cmp)(void *a, void *b)) {
+    // TODO: Implement deletion later
+    return node;
 }

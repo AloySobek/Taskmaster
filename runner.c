@@ -1,43 +1,17 @@
-#include "taskmaster.h"
+#include "runner.h"
+#include "process.h"
 
-struct process *init_process() {
-    struct process *process = (struct process *)malloc(sizeof(struct process));
+struct state *init_context() {
+    struct state *runner = (struct state *)malloc(sizeof(struct state));
 
-    process->restart_policy = never;
-    process->status = none;
+    runner->running = 0;
 
-    process->permissions = 0;
-
-    process->pid = 0;
-    process->numprocs = 0;
-    process->max_numprocs = 0;
-    process->autostart = 0;
-    process->initial_delay = 0;
-    process->restarts = 0;
-    process->graceful_period = 0;
-    process->last_exit_code = 0;
-
-    process->exit_codes = NULL;
-
-    process->cmd = NULL;
-    process->exit_signal = NULL;
-    process->alternative_stdout = NULL;
-    process->alternative_stdin = NULL;
-    process->cwd = NULL;
-
-    return process;
-}
-
-struct context *init_context() {
-    struct context *runner = (struct context *)malloc(sizeof(struct context));
-
-    runner->root = NULL;
-    runner->running = 1;
+    runner->proccesses = NULL;
 
     return runner;
 }
 
-void read_input(struct context *context) {
+struct process_group *read_input() {
     char *cmd = (char *)malloc(sizeof(char) * 256);
     char *exit_codes = (char *)malloc(sizeof(char) * 64);
     char *exit_signal = (char *)malloc(sizeof(char) * 32);
@@ -119,26 +93,41 @@ void read_input(struct context *context) {
     fgets(tmp, 16, stdin);
     permissions = strtol(tmp, NULL, 8);
 
-    struct process *process = init_process();
+    struct process_group *group = init_process_group();
 
-    context->root = insert_into_avl_tree(context->root, process);
+    group->restart_policy = restart_policy;
+
+    group->permissions = permissions;
+
+    group->max_numprocs = numprocs;
+    group->autostart = autostart;
+    group->initial_delay = initial_delay;
+    group->graceful_period = graceful_period;
+    group->max_restarts = restarts;
+
+    group->cmd = cmd;
+    group->exit_codes = exit_codes;
+    group->exit_signal = exit_signal;
+    group->alternative_stdout = alternative_stdout;
+    group->alternative_stdin = alternative_stdin;
+    group->cwd = cwd;
+
+    return group;
 }
 
-void read_status(struct context *context) {
-    // Wait for any child process to finish of any and update process accordingly
-}
+void poll_status(struct state *state) {}
 
-void sync_state(struct context *context) {
-    // Run processes
-}
+void sync_state(struct state *state) {}
 
 void runner_loop() {
-    struct context *context = init_context();
+    struct state *state = init_context();
 
-    while (context->running) {
-        read_input(context);
-        read_status(context);
-        sync_state(context);
+    while (state->running) {
+        struct node_group *group = read_input();
+
+        poll_status(state);
+
+        sync_state(state);
     }
 }
 
